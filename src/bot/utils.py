@@ -17,6 +17,21 @@ def get_weather_text(weather_resp: str) -> str:
     return weather_text
 
 
-def get_animal_photo(animal_resp: str):
+def get_animal_photo(animal_resp: str) -> str:
     animal_dict = json.loads(animal_resp)
     return animal_dict["urls"]["regular"]
+
+
+def get_exchange_params(exchange_query: str):
+    query_list = exchange_query.split()
+    if len(query_list) != 4 or query_list[2] != "to":
+        return "error"
+    else:
+        return query_list[0], query_list[1], query_list[3]
+
+
+def get_exchange_result(exchange_resp: str) -> str:
+    exchange_dict = json.loads(exchange_resp)
+    if exchange_dict.get("error") is not None:
+        return "error"
+    return exchange_dict["result"]

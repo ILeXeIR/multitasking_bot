@@ -30,7 +30,7 @@ commands = [
         description="Weather"
     ),
     BotCommand(
-        command="currency",
+        command="exchange",
         description="Currency exchange calculator"
     ),
     BotCommand(
