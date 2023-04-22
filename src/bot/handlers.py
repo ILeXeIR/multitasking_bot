@@ -19,6 +19,9 @@ exchange_error_message = "Wrong format, try again.\n" \
 class BotStates(StatesGroup):
     weather_state = State()
     exchange_state = State()
+    poll_question_state = State()
+    poll_options_state = State()
+    poll_anonymous_state = State()
 
 
 @handlers_router.message(Command(commands=["start"]))
@@ -100,3 +103,67 @@ async def send_random_animal(message: types.Message):
             photo_link = get_animal_photo(await resp.text())
             await message.answer(photo_link)
 
+
+@handlers_router.message(Command(commands=["poll"]))
+async def ask_poll_question(message: types.Message, state: FSMContext):
+    await state.set_state(BotStates.poll_question_state)
+    await message.answer("Write a poll question.\n"
+                         "Use /cancel to quit this command.")
+
+
+@handlers_router.message(BotStates.poll_question_state)
+async def get_poll_question(message: types.Message, state: FSMContext):
+    question = message.text.strip()
+    if 1 <= len(question) <= 300:
+        await state.update_data(question=question)
+        await state.set_state(BotStates.poll_options_state)
+        await message.answer("Add 1st option")
+    else:
+        await message.answer("Incorrect question size. Option may consist of "
+                             "1-300 characters.\nPlease try again.")
+
+
+@handlers_router.message(BotStates.poll_options_state)
+async def get_poll_option(message: types.Message, state: FSMContext):
+    poll_option = message.text.strip()
+    if len(poll_option) < 1 or len(poll_option) > 100:
+        await message.answer("Incorrect option size. Option may consist of "
+                             "1-100 characters.\nPlease try again.")
+        return None
+    options = (await state.get_data()).get("options")
+    if options is None:
+        await state.update_data(options=[poll_option])
+        await message.answer("Add 2nd option")
+    elif poll_option.lower() == "next" and len(options) > 1:
+        await state.set_state(BotStates.poll_anonymous_state)
+        await message.answer("Do you want create an anonymous poll? (yes/no)")
+    elif poll_option in options:
+        await message.answer("Option must be unique. Add another")
+    else:
+        options.append(poll_option)
+        await state.update_data(options=options)
+        if len(options) == 10:
+            await state.set_state(BotStates.poll_anonymous_state)
+            await message.answer("Do you want create an anonymous poll? (yes/no)")
+        else:
+            await message.answer("Add another option or send 'next' to go to next step")
+
+
+@handlers_router.message(BotStates.poll_anonymous_state)
+async def set_poll_anonymous(message: types.Message, state: FSMContext):
+    is_anonymous = message.text.strip().lower()
+    if is_anonymous == "yes":
+        await state.update_data(is_anonymous=True)
+    elif is_anonymous == "no":
+        await state.update_data(is_anonymous=False)
+    else:
+        await message.answer("Answer may be 'yes' or 'no'.\n"
+                             "Do you want create an anonymous poll?")
+        return None
+    poll_params = await state.get_data()
+    await state.clear()
+    await message.answer_poll(
+        question=poll_params["question"],
+        options=poll_params["options"],
+        is_anonymous=poll_params["is_anonymous"]
+    )
