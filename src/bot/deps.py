@@ -5,7 +5,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, BotCommandScopeDefault
 
 from src.settings import settings
-from .handlers import handlers_router
+from src.bot.handlers.basic_handlers import basic_router
+from src.bot.handlers.poll_handlers import poll_router
 
 
 # Configure logging
@@ -14,8 +15,10 @@ logging.basicConfig(level=logging.INFO)
 # Initialize bot and dispatcher
 bot = Bot(token=settings.TG_BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
-dp.include_router(handlers_router)
+dp.include_router(basic_router)
+dp.include_router(poll_router)
 
+# Set bot commands
 commands = [
     BotCommand(
         command="start",
